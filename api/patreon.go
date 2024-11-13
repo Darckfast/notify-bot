@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -56,9 +57,20 @@ func GetTier(hook PatreonWebHook) string {
 	return tierString + "**: "
 }
 
+// block ip
+// validate payload
 func Handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		return
+	}
+
+    fmt.Println(r.RemoteAddr)
+	// Loop over header names
+	for name, values := range r.Header {
+		// Loop over all values for the name.
+		for _, value := range values {
+			fmt.Println(name, value)
+		}
 	}
 
 	defer r.Body.Close()
