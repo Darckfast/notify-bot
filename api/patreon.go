@@ -6,7 +6,6 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
-	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -39,15 +38,12 @@ type PatreonTiers []struct {
 	} `json:"attributes"`
 }
 
-var (
-	tempTiers = ``
-	logger    = slog.New(slog.NewJSONHandler(os.Stdout, nil))
-)
+var logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
 func GetTier(hook PatreonWebHook) string {
 	var patreonTiers PatreonTiers
 
-	json.Unmarshal([]byte(tempTiers), &patreonTiers)
+	json.Unmarshal([]byte(os.Getenv("TIERS")), &patreonTiers)
 
 	tierString := "**"
 
@@ -59,6 +55,10 @@ func GetTier(hook PatreonWebHook) string {
 			}
 		}
 	}
+
+    if tierString == "**" {
+        return ""
+    }
 
 	return tierString + "**: "
 }
@@ -87,6 +87,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	if payloadSize == 0 || payloadSize > 1024*4 {
 		logger.Warn("Invalid request length")
+		return
+	}
+
+	if r.Header.Get("User-Agent") != "Patreon HTTP Robot" {
+		logger.Warn("Invalid user agent")
 		return
 	}
 
@@ -126,16 +131,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		Timeout: time.Second * 3,
 	}
 
-	res, err := client.Do(req)
+	_, err := client.Do(req)
 	if err != nil {
 		logger.Error("Error making request to discord", "error", err.Error())
 		return
 	}
 
-	defer res.Body.Close()
-
-	resBody, _ := io.ReadAll(res.Body)
-	w.Write(resBody)
-
-	logger.Info("Alert sent", "post-id", patreonHook.Data.ID)
+	logger.Info("Alert sent", "post", patreonHook.Data.ID)
 }
