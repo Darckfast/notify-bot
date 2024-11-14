@@ -188,9 +188,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		Timeout: time.Second * 3,
 	}
 
-	_, err := client.Do(req)
+	res, err := client.Do(req)
 	if err != nil {
 		logger.Error("Error making request to discord", "error", err.Error())
+		return
+	}
+
+	if res.StatusCode != 200 {
+		w.WriteHeader(400)
+		logger.Error("Error firing alert to discord", "status", res.StatusCode)
 		return
 	}
 
