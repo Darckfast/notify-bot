@@ -6,6 +6,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -56,9 +57,9 @@ func GetTier(hook PatreonWebHook) string {
 		}
 	}
 
-    if tierString == "**" {
-        return ""
-    }
+	if tierString == "**" {
+		return ""
+	}
 
 	return tierString + "**: "
 }
@@ -83,6 +84,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.Header.Get("X-Patreon-Event") != "posts:publish" {
+		logger.Warn("Invalid event trigger")
+		return
+	}
+
 	payloadSize, _ := strconv.Atoi(r.Header.Get("Content-Length"))
 
 	if payloadSize == 0 || payloadSize > 1024*4 {
@@ -99,6 +105,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	if apiKey != os.Getenv("API_KEY") {
 		logger.Warn("Invalid api key")
+		return
+	}
+
+	rawBody, _ := io.ReadAll(r.Body)
+	patreonSig := r.Header.Get("X-Patreon-Signature")
+
+	if !ValidatePayloadSignature(patreonSig, rawBody) {
+		logger.Warn("Invalid signature")
 		return
 	}
 
