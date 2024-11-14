@@ -28,8 +28,33 @@ type PatreonWebHook struct {
 	} `json:"data"`
 }
 
+type DiscordEmbed struct {
+	Title string `json:"title"`
+	URL   string `json:"url"`
+	Color int    `json:"color"`
+	Image struct {
+		URL string `json:"url"`
+	} `json:"image"`
+	Thumbnail struct {
+		URL string `json:"url"`
+	} `json:"thumbnail"`
+	Provider struct {
+		Name string `json:"name"`
+		URL  string `json:"url"`
+	} `json:"provider"`
+	Author struct {
+		Name    string `json:"name"`
+		URL     string `json:"url"`
+		IconURL string `json:"icon_url"`
+	} `json:"author"`
+	Footer struct {
+		Text string `json:"text"`
+	} `json:"footer"`
+}
+
 type DiscordWebHook struct {
-	Content string `json:"content"`
+	Content string         `json:"content"`
+	Embeds  []DiscordEmbed `json:"embeds"`
 }
 
 type PatreonTiers []struct {
@@ -131,9 +156,27 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var discPayload DiscordWebHook
 
+	postUrl := "https://www.patreon.com/posts/" + patreonHook.Data.ID
+
+	discEmbed := DiscordEmbed{
+		Title: patreonHook.Data.Attributes.Title,
+		URL:   postUrl,
+		Color: 16345172,
+	}
+	discEmbed.Image.URL = os.Getenv("BANNER_IMAGE_URL")
+	discEmbed.Thumbnail.URL = os.Getenv("THUMBNAIL_IMAGE_URL")
+	discEmbed.Provider.Name = "Patreon"
+	discEmbed.Provider.URL = "https://patreon.com"
+	discEmbed.Author.Name = os.Getenv("PATREON_NAME")
+	discEmbed.Author.URL = os.Getenv("PATREON_URL")
+	discEmbed.Author.IconURL = os.Getenv("PATREON_ICON_URL")
+	discEmbed.Footer.Text = "Patreon • " +
+		patreonHook.Data.Attributes.PublishedAt.Format("02/01/2022 3:04 PM")
+
 	discPayload.Content = os.Getenv("ALERT_MESSAGE")
 	discPayload.Content += GetTier(patreonHook)
-	discPayload.Content += "\nhttps://www.patreon.com/posts/" + patreonHook.Data.ID
+	discPayload.Content += "\n" + postUrl
+	discPayload.Embeds = []DiscordEmbed{discEmbed}
 
 	body, _ := json.Marshal(discPayload)
 
