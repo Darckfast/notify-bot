@@ -2,9 +2,12 @@ package api
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -36,7 +39,10 @@ type PatreonTiers []struct {
 	} `json:"attributes"`
 }
 
-var tempTiers = `[{"attributes":{"title": "Free"},"id": "24376423"},{"attributes":{"title":"tier-1"},"id":"24377500"}]`
+var (
+	tempTiers = ``
+	logger    = slog.New(slog.NewJSONHandler(os.Stdout, nil))
+)
 
 func GetTier(hook PatreonWebHook) string {
 	var patreonTiers PatreonTiers
@@ -57,30 +63,45 @@ func GetTier(hook PatreonWebHook) string {
 	return tierString + "**: "
 }
 
-// block ip
-// validate payload
+func ValidatePayloadSignature(signature string, payload []byte) bool {
+	sig, err := hex.DecodeString(signature)
+	if err != nil {
+		return false
+	}
+
+	secret := os.Getenv("PATREON_WEBHOOK_SECRET")
+	mac := hmac.New(md5.New, []byte(secret))
+
+	mac.Write(payload)
+
+	return hmac.Equal(sig, mac.Sum(nil))
+}
+
 func Handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
+		logger.Warn("Invalid method")
 		return
 	}
 
-    fmt.Println(r.RemoteAddr)
-	// Loop over header names
-	for name, values := range r.Header {
-		// Loop over all values for the name.
-		for _, value := range values {
-			fmt.Println(name, value)
-		}
+	payloadSize, _ := strconv.Atoi(r.Header.Get("Content-Length"))
+
+	if payloadSize == 0 || payloadSize > 1024*4 {
+		logger.Warn("Invalid request length")
+		return
 	}
 
-	defer r.Body.Close()
+	apiKey := r.URL.Query().Get("ak")
 
-	discUrl := os.Getenv("DISCORD_WEBHOOK")
+	if apiKey != os.Getenv("API_KEY") {
+		logger.Warn("Invalid api key")
+		return
+	}
 
 	var patreonHook PatreonWebHook
 
+	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(&patreonHook); err != nil {
-		// add log
+		logger.Error("Error decoding request payload", "error", err.Error())
 		return
 	}
 
@@ -92,6 +113,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	body, _ := json.Marshal(discPayload)
 
+	discUrl := os.Getenv("DISCORD_WEBHOOK")
 	req, _ := http.NewRequest("POST", discUrl, bytes.NewBuffer(body))
 	req.Header.Add("Content-Type", "application/json")
 
@@ -99,9 +121,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		Timeout: time.Second * 3,
 	}
 
-	res, _ := client.Do(req)
+	res, err := client.Do(req)
+	if err != nil {
+		logger.Error("Error making request to discord", "error", err.Error())
+		return
+	}
+
 	defer res.Body.Close()
 
 	resBody, _ := io.ReadAll(res.Body)
 	w.Write(resBody)
+
+	logger.Info("Alert sent", "post-id", patreonHook.Data.ID)
 }
