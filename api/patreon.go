@@ -108,6 +108,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	defer r.Body.Close()
 	rawBody, _ := io.ReadAll(r.Body)
 	patreonSig := r.Header.Get("X-Patreon-Signature")
 
@@ -118,8 +119,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var patreonHook PatreonWebHook
 
-	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(&patreonHook); err != nil {
+	if err := json.Unmarshal(rawBody, &patreonHook); err != nil {
 		logger.Error("Error decoding request payload", "error", err.Error())
 		return
 	}
