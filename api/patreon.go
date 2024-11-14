@@ -105,6 +105,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	logger.Info("Processing request",
+		"post", patreonHook.Data.ID,
+		"publishedAt", patreonHook.Data.Attributes.PublishedAt,
+	)
+
 	var discPayload DiscordWebHook
 
 	discPayload.Content = os.Getenv("ALERT_MESSAGE")
