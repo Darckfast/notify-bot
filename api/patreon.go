@@ -171,7 +171,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	discEmbed.Author.URL = os.Getenv("PATREON_URL")
 	discEmbed.Author.IconURL = os.Getenv("PATREON_ICON_URL")
 	discEmbed.Footer.Text = "Patreon • " +
-		patreonHook.Data.Attributes.PublishedAt.Format("02/01/2022 3:04 PM")
+		patreonHook.Data.Attributes.PublishedAt.Format("02/01/2006 3:04 PM")
 
 	discPayload.Content = os.Getenv("ALERT_MESSAGE")
 	discPayload.Content += GetTier(patreonHook)
