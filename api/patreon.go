@@ -194,7 +194,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if res.StatusCode != 200 {
+	if res.StatusCode > 299 {
 		w.WriteHeader(400)
 		logger.Error("Error firing alert to discord", "status", res.StatusCode)
 		return
