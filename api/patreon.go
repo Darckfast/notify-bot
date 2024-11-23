@@ -66,7 +66,7 @@ type PatreonTiers []struct {
 	} `json:"attributes"`
 }
 
-var logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
+var logger = slog.New(multilogger.NewHandler(os.Stdout))
 
 func GetTier(hook PatreonWebHook) string {
 	var patreonTiers PatreonTiers
