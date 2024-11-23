@@ -12,6 +12,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	multilogger "github.com/Darckfast/multi_logger/pkg/multi_logger"
 )
 
 type PatreonWebHook struct {
@@ -104,32 +106,44 @@ func ValidatePayloadSignature(signature string, payload []byte) bool {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+	ctx, wg := multilogger.SetupContext(&multilogger.SetupOps{
+		Request:     r,
+		ApiKey:      os.Getenv("BASELIME_API_KEY"),
+		ServiceName: os.Getenv("VERCEL_GIT_REPO_SLUG"),
+	})
+
+	defer func() {
+		wg.Wait()
+		ctx.Done()
+	}()
+	logger.InfoContext(ctx, "Processing request")
+
 	if r.Method != http.MethodPost {
 		logger.Warn("Invalid method")
 		return
 	}
 
 	if r.Header.Get("X-Patreon-Event") != "posts:publish" {
-		logger.Warn("Invalid event trigger")
+		logger.WarnContext(ctx, "Invalid event trigger")
 		return
 	}
 
 	payloadSize, _ := strconv.Atoi(r.Header.Get("Content-Length"))
 
 	if payloadSize == 0 || payloadSize > 1024*4 {
-		logger.Warn("Invalid request length")
+		logger.WarnContext(ctx, "Invalid request length")
 		return
 	}
 
 	if r.Header.Get("User-Agent") != "Patreon HTTP Robot" {
-		logger.Warn("Invalid user agent")
+		logger.WarnContext(ctx, "Invalid user agent")
 		return
 	}
 
 	apiKey := r.URL.Query().Get("ak")
 
 	if apiKey != os.Getenv("API_KEY") {
-		logger.Warn("Invalid api key")
+		logger.WarnContext(ctx, "Invalid api key")
 		return
 	}
 
@@ -138,14 +152,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	patreonSig := r.Header.Get("X-Patreon-Signature")
 
 	if !ValidatePayloadSignature(patreonSig, rawBody) {
-		logger.Warn("Invalid signature")
+		logger.WarnContext(ctx, "Invalid signature")
 		return
 	}
 
 	var patreonHook PatreonWebHook
 
 	if err := json.Unmarshal(rawBody, &patreonHook); err != nil {
-		logger.Error("Error decoding request payload", "error", err.Error())
+		logger.ErrorContext(ctx, "Error decoding request payload", "error", err.Error())
 		return
 	}
 
@@ -190,15 +204,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	res, err := client.Do(req)
 	if err != nil {
-		logger.Error("Error making request to discord", "error", err.Error())
+		logger.ErrorContext(ctx, "Error making request to discord", "error", err.Error())
 		return
 	}
 
 	if res.StatusCode > 299 {
 		w.WriteHeader(400)
-		logger.Error("Error firing alert to discord", "status", res.StatusCode)
+		logger.ErrorContext(ctx, "Error firing alert to discord", "status", res.StatusCode)
 		return
 	}
 
-	logger.Info("Alert sent", "post", patreonHook.Data.ID)
+	logger.InfoContext(ctx, "request completed", "status", 200, "postId", patreonHook.Data.ID)
 }
