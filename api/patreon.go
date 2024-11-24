@@ -108,7 +108,8 @@ func ValidatePayloadSignature(signature string, payload []byte) bool {
 func Handler(w http.ResponseWriter, r *http.Request) {
 	ctx, wg := multilogger.SetupContext(&multilogger.SetupOps{
 		Request:     r,
-		ApiKey:      os.Getenv("BASELIME_API_KEY"),
+		BaselimeApiKey:      os.Getenv("BASELIME_API_KEY"),
+		AxiomApiKey:      os.Getenv("AXIOM_API_KEY"),
 		ServiceName: os.Getenv("VERCEL_GIT_REPO_SLUG"),
 	})
 
