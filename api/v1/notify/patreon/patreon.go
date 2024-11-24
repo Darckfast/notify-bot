@@ -21,6 +21,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		Request:        r,
 		BaselimeApiKey: os.Getenv("BASELIME_API_KEY"),
 		AxiomApiKey:    os.Getenv("AXIOM_API_KEY"),
+        BetterStackApiKey: os.Getenv("BETTERSTACK_API_KEY"),
 		ServiceName:    os.Getenv("VERCEL_GIT_REPO_SLUG"),
 	})
 
