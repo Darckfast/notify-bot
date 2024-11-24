@@ -120,31 +120,31 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	logger.InfoContext(ctx, "Processing request")
 
 	if r.Method != http.MethodPost {
-		logger.Warn("Invalid method")
+		logger.WarnContext(ctx, "Invalid method", "status", 200)
 		return
 	}
 
 	if r.Header.Get("X-Patreon-Event") != "posts:publish" {
-		logger.WarnContext(ctx, "Invalid event trigger")
+		logger.WarnContext(ctx, "Invalid event trigger", "status", 200)
 		return
 	}
 
 	payloadSize, _ := strconv.Atoi(r.Header.Get("Content-Length"))
 
 	if payloadSize == 0 || payloadSize > 1024*4 {
-		logger.WarnContext(ctx, "Invalid request length")
+		logger.WarnContext(ctx, "Invalid request length", "status", 200)
 		return
 	}
 
 	if r.Header.Get("User-Agent") != "Patreon HTTP Robot" {
-		logger.WarnContext(ctx, "Invalid user agent")
+		logger.WarnContext(ctx, "Invalid user agent", "status", 200)
 		return
 	}
 
 	apiKey := r.URL.Query().Get("ak")
 
 	if apiKey != os.Getenv("API_KEY") {
-		logger.WarnContext(ctx, "Invalid api key")
+		logger.WarnContext(ctx, "Invalid api key", "status", 200)
 		return
 	}
 
@@ -153,7 +153,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	patreonSig := r.Header.Get("X-Patreon-Signature")
 
 	if !ValidatePayloadSignature(patreonSig, rawBody) {
-		logger.WarnContext(ctx, "Invalid signature")
+		logger.WarnContext(ctx, "Invalid signature", "status", 200)
 		return
 	}
 
@@ -164,7 +164,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logger.Info("Processing request",
+	logger.InfoContext(ctx, "Processing request",
 		"post", patreonHook.Data.ID,
 		"publishedAt", patreonHook.Data.Attributes.PublishedAt,
 	)
