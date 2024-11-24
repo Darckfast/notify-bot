@@ -1,4 +1,4 @@
-module main
+module discordnotify
 
 go 1.22.4
 
