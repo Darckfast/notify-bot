@@ -117,7 +117,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		wg.Wait()
 		ctx.Done()
 	}()
+
 	logger.InfoContext(ctx, "Processing request")
+
+	if r.Method == http.MethodHead {
+		logger.InfoContext(ctx, "ping", "status", 200)
+		return
+	}
 
 	if r.Method != http.MethodPost {
 		logger.WarnContext(ctx, "Invalid method", "status", 200)
