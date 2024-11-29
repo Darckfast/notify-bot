@@ -35,7 +35,7 @@ var MessageOpts = MsgOpts{
 	AuthorIconUrl: os.Getenv("PATREON_ICON_URL"),
 	NotifyMessage: os.Getenv("MESSAGE"),
 	WebhookUrl:    os.Getenv("DISCORD_WEBHOOK"),
-	AtRoleId:      os.Getenv("@ROLE_ID"),
+	AtRoleId:      os.Getenv("AT_ROLE_ID"),
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
