@@ -1,4 +1,4 @@
-package api
+package patreon
 
 import (
 	"bytes"
@@ -15,6 +15,28 @@ import (
 )
 
 var logger = slog.New(multilogger.NewHandler(os.Stdout))
+
+type MsgOpts struct {
+	AuthorName    string
+	AuthorUrl     string
+	AuthorIconUrl string
+	NotifyMessage string
+	WebhookUrl    string
+	ImageUrl      string
+	ThumbnailUrl  string
+	AtRoleId      string
+}
+
+var MessageOpts = MsgOpts{
+	ImageUrl:      os.Getenv("BANNER_IMAGE_URL"),
+	ThumbnailUrl:  os.Getenv("THUMBNAIL_IMAGE_URL"),
+	AuthorName:    os.Getenv("PATREON_NAME"),
+	AuthorUrl:     os.Getenv("PATREON_URL"),
+	AuthorIconUrl: os.Getenv("PATREON_ICON_URL"),
+	NotifyMessage: os.Getenv("MESSAGE"),
+	WebhookUrl:    os.Getenv("DISCORD_WEBHOOK"),
+	AtRoleId:      os.Getenv("@ROLE_ID"),
+}
 
 func Handler(w http.ResponseWriter, r *http.Request) {
 	ctx, wg := multilogger.SetupContext(&multilogger.SetupOps{
@@ -57,24 +79,27 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		URL:   postUrl,
 		Color: 16345172,
 	}
-	discEmbed.Image.URL = os.Getenv("BANNER_IMAGE_URL")
-	discEmbed.Thumbnail.URL = os.Getenv("THUMBNAIL_IMAGE_URL")
+	discEmbed.Image.URL = MessageOpts.ImageUrl
+	discEmbed.Thumbnail.URL = MessageOpts.ThumbnailUrl
 	discEmbed.Provider.Name = "Patreon"
 	discEmbed.Provider.URL = "https://patreon.com"
-	discEmbed.Author.Name = os.Getenv("PATREON_NAME")
-	discEmbed.Author.URL = os.Getenv("PATREON_URL")
-	discEmbed.Author.IconURL = os.Getenv("PATREON_ICON_URL")
+	discEmbed.Author.Name = MessageOpts.AuthorName
+	discEmbed.Author.URL = MessageOpts.AuthorUrl
+	discEmbed.Author.IconURL = MessageOpts.AuthorIconUrl
 	discEmbed.Footer.Text = "Patreon • " +
 		patreonHook.Data.Attributes.PublishedAt.Format("02/01/2006 3:04 PM")
 
-	discPayload.Content = os.Getenv("ALERT_MESSAGE")
-	discPayload.Content += patreon.MembersListInMD(patreonHook)
+	if MessageOpts.AtRoleId != "" {
+		discPayload.Content += "<@&" + MessageOpts.AtRoleId + "> "
+	}
+
+	discPayload.Content += MessageOpts.NotifyMessage
 	discPayload.Content += "\n" + postUrl
 	discPayload.Embeds = []types.DiscordEmbed{discEmbed}
 
 	body, _ := json.Marshal(discPayload)
 
-	discUrl := os.Getenv("DISCORD_WEBHOOK")
+	discUrl := MessageOpts.WebhookUrl
 	req, _ := http.NewRequest("POST", discUrl, bytes.NewBuffer(body))
 	req.Header.Add("Content-Type", "application/json")
 
@@ -89,7 +114,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if res.StatusCode > 299 {
-		w.WriteHeader(400)
 		logger.ErrorContext(ctx, "error firing alert to discord", "status", res.StatusCode)
 		return
 	}

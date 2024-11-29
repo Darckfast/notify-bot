@@ -5,42 +5,16 @@ import (
 	"crypto/hmac"
 	"crypto/md5"
 	"encoding/hex"
-	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
 
-	"discordnotify/pkg/types"
-
 	multilogger "github.com/Darckfast/multi_logger/pkg/multi_logger"
 )
 
 var logger = slog.New(multilogger.NewHandler(os.Stdout))
-
-func MembersListInMD(hook types.PatreonWebHook) string {
-	var patreonTiers types.PatreonTiers
-
-	json.Unmarshal([]byte(os.Getenv("TIERS")), &patreonTiers)
-
-	tierString := "**"
-
-	for _, postTier := range hook.Data.Attributes.Tiers {
-		for _, tier := range patreonTiers {
-			tierId, _ := strconv.Atoi(tier.Id)
-			if tierId == postTier {
-				tierString += " " + tier.Attributes.Title
-			}
-		}
-	}
-
-	if tierString == "**" {
-		return ""
-	}
-
-	return tierString + "**: "
-}
 
 func ValidatePayloadSignature(signature string, payload []byte) bool {
 	sig, err := hex.DecodeString(signature)
